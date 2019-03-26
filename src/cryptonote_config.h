@@ -192,12 +192,12 @@ namespace config
   uint64_t const BASE_REWARD_CLAMP_THRESHOLD = ((uint64_t)100000000); // pow(10, 8)
   std::string const P2P_REMOTE_DEBUG_TRUSTED_PUB_KEY = "0000000000000000000000000000000000000000000000000000000000000000";
 
-  uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 121bb2;//Wtma
-  uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 161bb2;//Wtmi
-  uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 1a9bb2;//Wtms
-  uint16_t const P2P_DEFAULT_PORT = 22022;
-  uint16_t const RPC_DEFAULT_PORT = 22023;
-  uint16_t const ZMQ_RPC_DEFAULT_PORT = 22024;
+  uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x121bb2;//Wtma
+  uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x161bb2;//Wtmi
+  uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x1a9bb2;//Wtms
+  uint16_t const P2P_DEFAULT_PORT = 17021;
+  uint16_t const RPC_DEFAULT_PORT = 17022;
+  uint16_t const ZMQ_RPC_DEFAULT_PORT = 17023;
   boost::uuids::uuid const NETWORK_ID = { {
         0x2a, 0x46 ,0x61, 0x72, 0x61, 0x75, 0x66, 0x65, 0x79, 0x62 ,0x61, 0x75, 0x74, 0x69, 0x4c
     } }; // Bender's nightmare
@@ -212,12 +212,12 @@ namespace config
 
   namespace testnet
   {
-    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 1ddd32;//Wtta
-    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 221d32;//Wtti
-    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 269d32;//Wtts
-    uint16_t const P2P_DEFAULT_PORT = 38156;
-    uint16_t const RPC_DEFAULT_PORT = 38157;
-    uint16_t const ZMQ_RPC_DEFAULT_PORT = 38158;
+    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x1ddd32;//Wtta
+    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x221d32;//Wtti
+    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x269d32;//Wtts
+    uint16_t const P2P_DEFAULT_PORT = 18021;
+    uint16_t const RPC_DEFAULT_PORT = 18022;
+    uint16_t const ZMQ_RPC_DEFAULT_PORT = 18023;
     boost::uuids::uuid const NETWORK_ID = { {
         0xe1, 0x5f, 0x3a, 0x78, 0x65, 0xdc, 0x17, 0x61, 0x64, 0x15, 0xbe, 0x6f, 0xca, 0xb8, 0x02, 0xa1,
       } }; // Bender's daydream
@@ -234,12 +234,12 @@ namespace config
 
   namespace stagenet
   {
-    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = dd32;//Wtsa
-    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 4dd32;//Wtsi
-    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 95d32;//Wtss
-    uint16_t const P2P_DEFAULT_PORT = 38153;
-    uint16_t const RPC_DEFAULT_PORT = 38154;
-    uint16_t const ZMQ_RPC_DEFAULT_PORT = 38155;
+    uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0xdd32;//Wtsa
+    uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x4dd32;//Wtsi
+    uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x95d32;//Wtss
+    uint16_t const P2P_DEFAULT_PORT = 19021;
+    uint16_t const RPC_DEFAULT_PORT = 19022;
+    uint16_t const ZMQ_RPC_DEFAULT_PORT = 19023;
     boost::uuids::uuid const NETWORK_ID = { {
         0x69, 0xbb ,0x37, 0x9B, 0x22, 0xB2, 0x97, 0x8A, 0xCC, 0xA1, 0xDF, 0x9C, 0x0A, 0x66 ,0x1E, 0x09
       } }; // Beep Boop
