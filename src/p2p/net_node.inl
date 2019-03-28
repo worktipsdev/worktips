@@ -425,18 +425,19 @@ namespace nodetool
     std::set<std::string> full_addrs;
     if (nettype == cryptonote::TESTNET)
     {
-      full_addrs.insert("");
+      full_addrs.insert("192.3.104.59:18021");
     }
     else if (nettype == cryptonote::STAGENET)
     {
-      full_addrs.insert("");
+      full_addrs.insert("192.3.104.60:19021");
     }
     else if (nettype == cryptonote::FAKECHAIN)
     {
     }
     else
     {
-      full_addrs.insert("");
+      full_addrs.insert("192.3.104.57:17021");
+	  full_addrs.insert("192.3.104.58:17021");
     }
     return full_addrs;
   }
