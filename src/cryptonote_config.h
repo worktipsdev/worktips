@@ -91,7 +91,7 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 
 
 #define FEE_PER_KB_OLD                                  (uint64_t(10000)) // pow(10, 5)
-#define FEE_PER_KB                                      (uint64_t(20000)) // 2 * pow(10, 5)
+#define FEE_PER_KB                                      (uint64_t(200)) // 2 * pow(10, 5)
 #define FEE_PER_BYTE                                    (uint64_t(10000))
 #define DYNAMIC_FEE_PER_KB_BASE_FEE                     (uint64_t(20000)) // 2 * pow(10,5)
 #define DYNAMIC_FEE_PER_KB_BASE_BLOCK_REWARD            (uint64_t(1000000)) // 10 * pow(10,5)
