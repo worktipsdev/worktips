@@ -89,7 +89,6 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 
 #define PREMINE											((uint64_t)100000000)
 
-
 #define FEE_PER_KB_OLD                                  (uint64_t(10000)) // pow(10, 5)
 #define FEE_PER_KB                                      (uint64_t(200)) // 2 * pow(10, 5)
 #define FEE_PER_BYTE                                    (uint64_t(10000))
@@ -263,6 +262,8 @@ namespace cryptonote
     network_version_9_service_nodes, // Proof Of Stake w/ Service Nodes
     network_version_10_bulletproofs, // Bulletproofs, Service Node Grace Registration Period, Batched Governance
     network_version_11_infinite_staking,
+
+    network_version_count,
   };
 
   enum network_type : uint8_t

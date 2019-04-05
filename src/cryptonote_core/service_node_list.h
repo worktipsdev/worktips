@@ -1,3 +1,4 @@
+// Copyright (c)      2018, The Loki Project
 // Copyright (c)      2018, The Worktips Project
 //
 // All rights reserved.
@@ -119,6 +120,7 @@ namespace service_nodes
     bool is_fully_funded() const { return total_contributed >= staking_requirement; }
     size_t total_num_locked_contributions() const;
 
+    int                                dummy; // FIXME(doyle)
     BEGIN_SERIALIZE_OBJECT()
       VARINT_FIELD(version)
       VARINT_FIELD(registration_height)
@@ -136,6 +138,7 @@ namespace service_nodes
       {
         VARINT_FIELD(swarm_id)
       }
+      VARINT_FIELD(dummy)
     END_SERIALIZE()
   };
 
@@ -346,9 +349,29 @@ namespace service_nodes
   };
 
   bool reg_tx_extract_fields(const cryptonote::transaction& tx, std::vector<cryptonote::account_public_address>& addresses, uint64_t& portions_for_operator, std::vector<uint64_t>& portions, uint64_t& expiration_timestamp, crypto::public_key& service_node_key, crypto::signature& signature, crypto::public_key& tx_pub_key);
-  bool convert_registration_args(cryptonote::network_type nettype, const std::vector<std::string>& args, std::vector<cryptonote::account_public_address>& addresses, std::vector<uint64_t>& portions, uint64_t& portions_for_operator, boost::optional<std::string&> err_msg);
-  bool make_registration_cmd(cryptonote::network_type nettype, const std::vector<std::string>& args, const crypto::public_key& service_node_pubkey,
-                             const crypto::secret_key &service_node_key, std::string &cmd, bool make_friendly, boost::optional<std::string&> err_msg);
+
+  struct converted_registration_args
+  {
+    bool                                            success;
+    std::vector<cryptonote::account_public_address> addresses;
+    std::vector<uint64_t>                           portions;
+    uint64_t                                        portions_for_operator;
+    std::string                                     err_msg; // if (success == false), this is set to the err msg otherwise empty
+  };
+  converted_registration_args convert_registration_args(cryptonote::network_type nettype,
+                                                        const std::vector<std::string>& args,
+                                                        uint64_t staking_requirement,
+                                                        int hf_version);
+
+  bool make_registration_cmd(cryptonote::network_type nettype,
+      int hf_version,
+      uint64_t staking_requirement,
+      const std::vector<std::string>& args,
+      const crypto::public_key& service_node_pubkey,
+      const crypto::secret_key &service_node_key,
+      std::string &cmd,
+      bool make_friendly,
+      boost::optional<std::string&> err_msg);
 
   const static cryptonote::account_public_address null_address{ crypto::null_pkey, crypto::null_pkey };
   const static std::vector<std::pair<cryptonote::account_public_address, uint64_t>> null_winner =

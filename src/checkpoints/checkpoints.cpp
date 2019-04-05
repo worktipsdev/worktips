@@ -174,7 +174,8 @@ namespace cryptonote
         break;
       case MAINNET:
 #if !defined(WORKTIPS_ENABLE_INTEGRATION_TEST_HOOKS)
-#endif
+        
+		#endif
         break;
     }
     return true;

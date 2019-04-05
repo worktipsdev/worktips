@@ -52,10 +52,11 @@ public:
   boost::optional<std::string> get_earliest_height(uint8_t version, uint64_t &earliest_height) const;
   boost::optional<std::string> get_dynamic_base_fee_estimate(uint64_t grace_blocks, uint64_t &fee) const;
   boost::optional<std::string> get_fee_quantization_mask(uint64_t &fee_quantization_mask) const;
-  boost::optional<uint8_t> get_network_version() const;
+  boost::optional<uint8_t>     get_hardfork_version() const;
 
   std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry>             get_service_nodes(std::vector<std::string> const &pubkeys, boost::optional<std::string> &failed) const;
   std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry>             get_all_service_nodes(boost::optional<std::string> &failed) const;
+  std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry>             get_contributed_service_nodes(const std::string &contributor, boost::optional<std::string> &failed) const;
   std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::entry> get_service_node_blacklisted_key_images(boost::optional<std::string> &failed) const;
 
 private:
@@ -67,8 +68,14 @@ private:
   mutable uint64_t m_service_node_blacklisted_key_images_cached_height;
   mutable std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::entry> m_service_node_blacklisted_key_images;
 
+  bool update_all_service_nodes_cache(uint64_t height, boost::optional<std::string> &failed) const;
+
   mutable uint64_t m_all_service_nodes_cached_height;
   mutable std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry> m_all_service_nodes;
+
+  mutable uint64_t m_contributed_service_nodes_cached_height;
+  mutable std::string m_contributed_service_nodes_cached_address;
+  mutable std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry> m_contributed_service_nodes;
 
   mutable uint64_t m_height;
   mutable uint64_t m_earliest_height[256];

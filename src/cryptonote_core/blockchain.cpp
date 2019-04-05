@@ -95,32 +95,24 @@ struct hard_fork_record
   time_t time;
 };
 
+// TODO(doyle): Move this out into a globally accessible object
 // version 7 from the start of the blockchain, inhereted from Monero mainnet
 static const hard_fork_record mainnet_hard_forks[] =
 {
-  { network_version_7,                   1,      0, 1503046577 },
-  { network_version_8,                   10,  0, 1533006000 },
-  //{ network_version_9_service_nodes,     101250, 0, 1537444800 },
-  //{ network_version_10_bulletproofs,     161849, 0, 1544743800 }, // 2018-12-13 23:30UTC
-  //{ network_version_11_infinite_staking, 230704, 0, 1553047200 }, // 2019-03-20 13:00AEDT
+  { network_version_7,                   1,      0, 1554448799 },
+  { network_version_8,                   10,  0, 1554448860 },
 };
 
 static const hard_fork_record testnet_hard_forks[] =
 {
-  { network_version_7,                   1, 0, 1533631121 },
-  { network_version_8,                   2, 0, 1533631122 },
-  /*{ network_version_9_service_nodes,     3, 0, 1533631123 },
-  { network_version_10_bulletproofs,     4, 0, 1542681077 },
-  { network_version_11_infinite_staking, 5, 0, 1551223964 },*/
+  { network_version_7,                   1, 0, 1554448799 },
+  { network_version_8,                   2, 0, 1554448860 },
 };
 
 static const hard_fork_record stagenet_hard_forks[] =
 {
-  { network_version_7,                   1,     0, 1341378000 },
-  { network_version_8,                   5, 0, 1533006000 },
-  /*{ network_version_9_service_nodes,     96210, 0, 1536840000 },
-  { network_version_10_bulletproofs,     96211, 0, 1536840120 },
-  { network_version_11_infinite_staking, 147029, 0, 1551223964 },*/ // 2019-02-27 12:30 AEDT
+  { network_version_7,                   1,     0, 1554448799 },
+  { network_version_8,                   2, 0, 1554448860 },
 };
 
 //------------------------------------------------------------------
@@ -2937,21 +2929,21 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
       tx_extra_service_node_deregister deregister;
       if (!get_service_node_deregister_from_tx_extra(tx.extra, deregister))
       {
-        MERROR_VER("TX version deregister did not have the deregister metadata in the tx_extra");
+        MERROR_VER("Deregister TX did not have the deregister metadata in the tx_extra");
         return false;
       }
 
       const std::shared_ptr<const service_nodes::quorum_state> quorum_state = m_service_node_list.get_quorum_state(deregister.block_height);
       if (!quorum_state)
       {
-        MERROR_VER("TX version 3 deregister_tx could not get quorum for height: " << deregister.block_height);
+        MERROR_VER("Deregister TX could not get quorum for height: " << deregister.block_height);
         return false;
       }
 
       if (!service_nodes::deregister_vote::verify_deregister(nettype(), deregister, tvc.m_vote_ctx, *quorum_state))
       {
         tvc.m_verifivation_failed = true;
-        MERROR_VER("tx " << get_transaction_hash(tx) << ": version 3 deregister_tx could not be completely verified reason: " << print_vote_verification_context(tvc.m_vote_ctx));
+        MERROR_VER("tx " << get_transaction_hash(tx) << ": deregister tx could not be completely verified reason: " << print_vote_verification_context(tvc.m_vote_ctx));
         return false;
       }
 

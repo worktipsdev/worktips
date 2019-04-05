@@ -79,6 +79,7 @@ using namespace epee;
 #include "device/device_cold.hpp"
 #include "device_trezor/device_trezor.hpp"
 
+#include "cryptonote_core/service_node_list.h"
 #include "cryptonote_core/service_node_rules.h"
 #include "common/worktips_integration_test_hooks.h"
 
@@ -2215,6 +2216,10 @@ void wallet2::process_new_blockchain_entry(const cryptonote::block& b, const cry
     }
     TIME_MEASURE_FINISH(txs_handle_time);
     m_last_block_reward = cryptonote::get_outs_money_amount(b.miner_tx);
+
+    if (height > 0 && ((height % 2000) == 0))
+      LOG_PRINT_L0("Blockchain sync progress: " << bl_id << ", height " << height);
+
     LOG_PRINT_L2("Processed block: " << bl_id << ", height " << height << ", " <<  miner_tx_handle_time + txs_handle_time << "(" << miner_tx_handle_time << "/" << txs_handle_time <<")ms");
   }else
   {
@@ -3043,7 +3048,7 @@ void wallet2::refresh(bool trusted_daemon, uint64_t start_height, uint64_t & blo
       {
         LOG_PRINT_L1("Another try pull_blocks (try_count=" << try_count << ")...");
         first = true;
-		start_height = 0;
+        start_height = 0;
         blocks.clear();
         parsed_blocks.clear();
         short_chain_history.clear();
@@ -5615,27 +5620,20 @@ bool wallet2::is_transfer_unlocked(uint64_t unlock_time, uint64_t block_height, 
   }
 
   {
+    const std::string primary_address = get_address_as_str();
     boost::optional<std::string> failed;
-    std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry> service_nodes_states = m_node_rpc_proxy.get_all_service_nodes(failed);
+    std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry> service_nodes_states = m_node_rpc_proxy.get_contributed_service_nodes(primary_address, failed);
     if (failed)
     {
       LOG_PRINT_L1("Failed to query service node for locked transfers, assuming transfer not locked, reason: " << *failed);
       return true;
     }
 
-    cryptonote::account_public_address const primary_address = get_address();
     for (cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry const &entry : service_nodes_states)
     {
       for (cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::contributor const &contributor : entry.contributors)
       {
-        address_parse_info address_info = {};
-        if (!cryptonote::get_account_address_from_str(address_info, nettype(), contributor.address))
-        {
-          MERROR("Failed to parse string representation of address: " << contributor.address);
-          continue;
-        }
-
-        if (primary_address != address_info.address)
+        if (primary_address != contributor.address)
           continue;
 
         for (cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::contribution const &contribution : contributor.locked_contributions)
@@ -7086,9 +7084,16 @@ bool wallet2::is_output_blackballed(const std::pair<uint64_t, uint64_t> &output)
   catch (const std::exception &e) { return false; }
 }
 
+static const char *ERR_MSG_NETWORK_VERSION_QUERY_FAILED = tr("Could not query the current network version, try later");
+static const char *ERR_MSG_NETWORK_HEIGHT_QUERY_FAILED = tr("Could not query the current network block height, try later: ");
+static const char *ERR_MSG_SERVICE_NODE_LIST_QUERY_FAILED = tr("Failed to query daemon for service node list");
+static const char *ERR_MSG_TOO_MANY_TXS_CONSTRUCTED = tr("Constructed too many transations, please sweep_all first");
+static const char *ERR_MSG_EXCEPTION_THROWN = tr("Exception thrown, staking process could not be completed: ");
+
 wallet2::stake_result wallet2::check_stake_allowed(const crypto::public_key& sn_key, const cryptonote::address_parse_info& addr_info, uint64_t& amount, double fraction)
 {
   wallet2::stake_result result = {};
+  result.status                = wallet2::stake_result_status::invalid;
   result.msg.reserve(128);
 
   if (addr_info.has_payment_id)
@@ -7120,22 +7125,23 @@ wallet2::stake_result wallet2::check_stake_allowed(const crypto::public_key& sn_
   {
     result.status = stake_result_status::service_node_list_query_failed;
     result.msg.reserve(failed->size() + 128);
-    result.msg    = tr("Failed to query daemon for service node list");
+    result.msg    = ERR_MSG_NETWORK_VERSION_QUERY_FAILED;
     result.msg    += *failed;
+    return result;
   }
 
   if (response.size() != 1)
   {
     result.status = stake_result_status::service_node_not_registered;
-    result.msg = tr("Could not find service node in service node list, please make sure it is registered first.");
+    result.msg    = tr("Could not find service node in service node list, please make sure it is registered first.");
     return result;
   }
 
-  const boost::optional<uint8_t> res = m_node_rpc_proxy.get_network_version();
+  const boost::optional<uint8_t> res = m_node_rpc_proxy.get_hardfork_version();
   if (!res)
   {
     result.status = stake_result_status::network_version_query_failed;
-    result.msg    = tr("Could not query the current network version, try later");
+    result.msg    = ERR_MSG_NETWORK_VERSION_QUERY_FAILED;
     return result;
   }
 
@@ -7146,9 +7152,9 @@ wallet2::stake_result wallet2::check_stake_allowed(const crypto::public_key& sn_
   for (COMMAND_RPC_GET_SERVICE_NODES::response::contributor const &contributor : snode_info.contributors)
     total_num_locked_contributions += contributor.locked_contributions.size();
 
-  uint8_t const hf_version     = *res;
-  uint64_t max_contrib_total   = snode_info.staking_requirement - snode_info.total_reserved;
-  uint64_t min_contrib_total   = service_nodes::get_min_node_contribution(hf_version, snode_info.staking_requirement, snode_info.total_reserved, total_num_locked_contributions);
+  uint8_t const hf_version   = *res;
+  uint64_t max_contrib_total = snode_info.staking_requirement - snode_info.total_reserved;
+  uint64_t min_contrib_total = service_nodes::get_min_node_contribution(hf_version, snode_info.staking_requirement, snode_info.total_reserved, total_num_locked_contributions);
 
   bool is_preexisting_contributor = false;
   for (const auto& contributor : snode_info.contributors)
@@ -7223,10 +7229,10 @@ wallet2::stake_result wallet2::check_stake_allowed(const crypto::public_key& sn_
   return result;
 }
 
-wallet2::stake_result wallet2::create_stake_tx(std::vector<pending_tx> &ptx, const crypto::public_key& service_node_key, const cryptonote::address_parse_info& addr_info, uint64_t amount, double amount_fraction, uint32_t priority, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices)
+wallet2::stake_result wallet2::create_stake_tx(const crypto::public_key& service_node_key, const cryptonote::address_parse_info& addr_info, uint64_t amount, double amount_fraction, uint32_t priority, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices)
 {
   wallet2::stake_result result = {};
-  ptx.clear();
+  result.status                = wallet2::stake_result_status::invalid;
 
   try
   {
@@ -7237,7 +7243,7 @@ wallet2::stake_result wallet2::create_stake_tx(std::vector<pending_tx> &ptx, con
   catch (const std::exception& e)
   {
     result.status = stake_result_status::exception_thrown;
-    result.msg = tr("Exception thrown, staking process could not be completed");
+    result.msg = ERR_MSG_EXCEPTION_THROWN;
     result.msg += e.what();
     return result;
   }
@@ -7261,7 +7267,7 @@ wallet2::stake_result wallet2::create_stake_tx(std::vector<pending_tx> &ptx, con
 
   if (!err.empty() || !err2.empty())
   {
-    result.msg = tr("Could not query the current network block height, try later: ");
+    result.msg = ERR_MSG_NETWORK_HEIGHT_QUERY_FAILED;
     result.msg += (err.empty() ? err2 : err);
     result.status = stake_result_status::network_height_query_failed;
     return result;
@@ -7284,24 +7290,401 @@ wallet2::stake_result wallet2::create_stake_tx(std::vector<pending_tx> &ptx, con
   try
   {
     priority = adjust_priority(priority);
-    ptx = create_transactions_2(dsts, CRYPTONOTE_DEFAULT_TX_MIXIN, unlock_at_block, priority, extra, subaddr_account, subaddr_indices, true);
+    auto ptx_vector  = create_transactions_2(dsts, CRYPTONOTE_DEFAULT_TX_MIXIN, unlock_at_block, priority, extra, subaddr_account, subaddr_indices, true);
+    if (ptx_vector.size() == 1)
+    {
+      result.status = stake_result_status::success;
+      result.ptx    = ptx_vector[0];
+    }
+    else
+    {
+      result.status = stake_result_status::too_many_transactions_constructed;
+      result.msg    = ERR_MSG_TOO_MANY_TXS_CONSTRUCTED;
+    }
   }
   catch (const std::exception& e)
   {
-    result.msg = tr("Exception thrown on create tx: ");
+    result.status = stake_result_status::exception_thrown;
+    result.msg = ERR_MSG_EXCEPTION_THROWN;
     result.msg += e.what();
-    result.status = stake_result_status::network_height_query_failed;
     return result;
   }
 
-  if (ptx.size() == 1) result.status = stake_result_status::success;
-  else
+  assert(result.status != stake_result_status::invalid);
+  return result;
+}
+
+wallet2::register_service_node_result wallet2::create_register_service_node_tx(const std::vector<std::string> &args_, uint32_t subaddr_account)
+{
+  std::vector<std::string> local_args = args_;
+  register_service_node_result result = {};
+  result.status                       = register_service_node_result_status::invalid;
+
+  //
+  // Parse Tx Args
+  //
+  std::set<uint32_t> subaddr_indices;
+  uint32_t priority = 0;
   {
-    result.status = stake_result_status::too_many_transactions_constructed;
-    result.msg    = tr("Constructed too many transations, please sweep_all first");
-    ptx.clear();
+    if (local_args.size() > 0 && local_args[0].substr(0, 6) == "index=")
+    {
+      if (!tools::parse_subaddress_indices(local_args[0], subaddr_indices))
+      {
+        result.status = register_service_node_result_status::subaddr_indices_parse_fail;
+        result.msg = tr("Could not parse subaddress indices argument: ") + local_args[0];
+        return result;
+      }
+
+      local_args.erase(local_args.begin());
+    }
+
+    uint32_t priority = 0;
+    if (local_args.size() > 0 && parse_priority(local_args[0], priority))
+      local_args.erase(local_args.begin());
+
+    priority = adjust_priority(priority);
+    if (local_args.size() < 6)
+    {
+      result.status = register_service_node_result_status::insufficient_num_args;
+      result.msg += tr("\nPrepare this command in the daemon with the prepare_registration command");
+      result.msg += tr("\nThis command must be run from the daemon that will be acting as a service node");
+      return result;
+    }
   }
 
+  //
+  // Parse Registration Contributor Args
+  //
+  boost::optional<uint8_t> hf_version = get_hard_fork_version();
+  if (!hf_version)
+  {
+    result.status = register_service_node_result_status::network_version_query_failed;
+    result.msg    = ERR_MSG_NETWORK_VERSION_QUERY_FAILED;
+    return result;
+  }
+
+  uint64_t staking_requirement = 0, bc_height = 0;
+  service_nodes::converted_registration_args converted_args = {};
+  {
+    std::string err, err2;
+    bc_height = std::max(get_daemon_blockchain_height(err),
+                         get_daemon_blockchain_target_height(err2));
+    {
+      if (!err.empty() || !err2.empty())
+      {
+        result.msg = ERR_MSG_NETWORK_HEIGHT_QUERY_FAILED;
+        result.msg += (err.empty() ? err2 : err);
+        result.status = register_service_node_result_status::network_height_query_failed;
+        return result;
+      }
+
+      if (!is_synced())
+      {
+        result.status = register_service_node_result_status::wallet_not_synced;
+        result.msg    = tr("Wallet is not synced. Please synchronise your wallet to the blockchain");
+        return result;
+      }
+    }
+
+    staking_requirement = service_nodes::get_staking_requirement(nettype(), bc_height, *hf_version);
+    std::vector<std::string> const registration_args(local_args.begin(), local_args.begin() + local_args.size() - 3);
+    converted_args = service_nodes::convert_registration_args(nettype(), registration_args, staking_requirement, *hf_version);
+
+    if (!converted_args.success)
+    {
+      result.status = register_service_node_result_status::convert_registration_args_failed;
+      result.msg = tr("Could not convert registration args, reason: ") + converted_args.err_msg;
+      return result;
+    }
+  }
+
+  cryptonote::account_public_address address = converted_args.addresses[0];
+  if (!contains_address(address))
+  {
+    result.status = register_service_node_result_status::first_address_must_be_primary_address;
+    result.msg = tr(
+                    "The first reserved address for this registration does not belong to this wallet.\n"
+                    "Service node operator must specify an address owned by this wallet for service node registration."
+                   );
+    return result;
+  }
+
+
+  //
+  // Parse Registration Metadata Args
+  //
+  size_t const timestamp_index  = local_args.size() - 3;
+  size_t const key_index        = local_args.size() - 2;
+  size_t const signature_index  = local_args.size() - 1;
+  const std::string &service_node_key_as_str = local_args[key_index];
+
+  crypto::public_key service_node_key;
+  crypto::signature signature;
+  uint64_t expiration_timestamp = 0;
+  {
+    try
+    {
+      expiration_timestamp = boost::lexical_cast<uint64_t>(local_args[timestamp_index]);
+      if (expiration_timestamp <= (uint64_t)time(nullptr) + 600 /* 10 minutes */)
+      {
+        result.status = register_service_node_result_status::registration_timestamp_expired;
+        result.msg    = tr("The registration timestamp has expired.");
+        return result;
+      }
+    }
+    catch (const std::exception &e)
+    {
+      result.status = register_service_node_result_status::registration_timestamp_expired;
+      result.msg = tr("The registration timestamp failed to parse: ") + local_args[timestamp_index];
+      return result;
+    }
+
+    if (!epee::string_tools::hex_to_pod(local_args[key_index], service_node_key))
+    {
+      result.status = register_service_node_result_status::service_node_key_parse_fail;
+      result.msg = tr("Failed to parse service node pubkey");
+      return result;
+    }
+
+    if (!epee::string_tools::hex_to_pod(local_args[signature_index], signature))
+    {
+      result.status = register_service_node_result_status::service_node_signature_parse_fail;
+      result.msg = tr("Failed to parse service node signature");
+      return result;
+    }
+
+  }
+
+  std::vector<uint8_t> extra;
+  add_service_node_contributor_to_tx_extra(extra, address);
+  add_service_node_pubkey_to_tx_extra(extra, service_node_key);
+  if (!add_service_node_register_to_tx_extra(extra, converted_args.addresses, converted_args.portions_for_operator, converted_args.portions, expiration_timestamp, signature))
+  {
+    result.status = register_service_node_result_status::service_node_register_serialize_to_tx_extra_fail;
+    result.msg    = tr("Failed to serialize service node registration tx extra");
+    return result;
+  }
+
+  //
+  // Check service is able to be registered and calculate unlock blocks
+  //
+  refresh(false);
+  uint64_t unlock_block = 0;
+  {
+    uint64_t staking_requirement_lock_blocks = service_nodes::staking_num_lock_blocks(nettype());
+    uint64_t locked_blocks                   = staking_requirement_lock_blocks + STAKING_REQUIREMENT_LOCK_BLOCKS_EXCESS;
+    unlock_block                             = bc_height + locked_blocks;
+    {
+      boost::optional<std::string> failed;
+      const std::vector<cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry> response = get_service_nodes({service_node_key_as_str}, failed);
+      if (failed)
+      {
+        result.status = register_service_node_result_status::service_node_list_query_failed;
+        result.msg    = ERR_MSG_NETWORK_VERSION_QUERY_FAILED;
+        return result;
+      }
+
+      if (response.size() >= 1)
+      {
+        bool can_reregister = false;
+        if (*hf_version == cryptonote::network_version_10_bulletproofs)
+        {
+          cryptonote::COMMAND_RPC_GET_SERVICE_NODES::response::entry const &node_info = response[0];
+          uint64_t expiry_height = node_info.registration_height + staking_requirement_lock_blocks;
+          if (bc_height >= expiry_height)
+            can_reregister = true;
+        }
+
+        if (!can_reregister)
+        {
+          result.status = register_service_node_result_status::service_node_cannot_reregister;
+          result.msg    = tr("This service node is already registered");
+          return result;
+        }
+      }
+    }
+  }
+
+  if (use_fork_rules(cryptonote::network_version_11_infinite_staking, 1))
+    unlock_block = 0;
+
+  //
+  // Create Register Transaction
+  //
+  {
+    uint64_t amount_payable_by_operator = 0;
+    {
+      const uint64_t DUST                 = MAX_NUMBER_OF_CONTRIBUTORS;
+      uint64_t amount_left                = staking_requirement;
+      for (size_t i = 0; i < converted_args.portions.size(); i++)
+      {
+        uint64_t amount = service_nodes::portions_to_amount(staking_requirement, converted_args.portions[i]);
+        if (i == 0) amount_payable_by_operator += amount;
+        amount_left -= amount;
+      }
+
+      if (amount_left <= DUST)
+        amount_payable_by_operator += amount_left;
+    }
+
+    vector<cryptonote::tx_destination_entry> dsts;
+    cryptonote::tx_destination_entry de;
+    de.addr = address;
+    de.is_subaddress = false;
+    de.amount = amount_payable_by_operator;
+    dsts.push_back(de);
+
+    try
+    {
+      // NOTE(worktips): We know the address should always be a primary address and has no payment id, so we can ignore the subaddress/payment id field here
+      cryptonote::address_parse_info dest = {};
+      dest.address                        = address;
+
+      auto ptx_vector = create_transactions_2(dsts, CRYPTONOTE_DEFAULT_TX_MIXIN, unlock_block /* unlock_time */, priority, extra, subaddr_account, subaddr_indices, true);
+      if (ptx_vector.size() == 1)
+      {
+        result.status = register_service_node_result_status::success;
+        result.ptx    = ptx_vector[0];
+      }
+      else
+      {
+        result.status = register_service_node_result_status::too_many_transactions_constructed;
+        result.msg    = ERR_MSG_TOO_MANY_TXS_CONSTRUCTED;
+      }
+    }
+    catch (const std::exception& e)
+    {
+      result.status = register_service_node_result_status::exception_thrown;
+      result.msg = ERR_MSG_EXCEPTION_THROWN;
+      result.msg += e.what();
+      return result;
+    }
+  }
+
+  assert(result.status != register_service_node_result_status::invalid);
+  return result;
+}
+
+wallet2::request_stake_unlock_result wallet2::can_request_stake_unlock(const crypto::public_key &sn_key)
+{
+  request_stake_unlock_result result = {};
+  result.ptx.tx.version              = cryptonote::transaction::version_4_tx_types;
+  if (!result.ptx.tx.set_type(cryptonote::transaction::type_key_image_unlock))
+  {
+    result.msg = tr("Failed to construct a key image unlock transaction");
+    return result;
+  }
+
+  std::string const sn_key_as_str = epee::string_tools::pod_to_hex(sn_key);
+  {
+    using namespace cryptonote;
+    boost::optional<std::string> failed;
+    const std::vector<COMMAND_RPC_GET_SERVICE_NODES::response::entry> response = get_service_nodes({sn_key_as_str}, failed);
+    if (failed)
+    {
+      result.msg = *failed;
+      return result;
+    }
+
+    if (response.empty())
+    {
+      result.msg = tr("No service node is known for: ") + sn_key_as_str;
+      return result;
+    }
+
+    cryptonote::account_public_address const primary_address = get_address();
+    std::vector<COMMAND_RPC_GET_SERVICE_NODES::response::contribution> const *contributions = nullptr;
+    COMMAND_RPC_GET_SERVICE_NODES::response::entry const &node_info                         = response[0];
+    for (COMMAND_RPC_GET_SERVICE_NODES::response::contributor const &contributor : node_info.contributors)
+    {
+      address_parse_info address_info = {};
+      cryptonote::get_account_address_from_str(address_info, nettype(), contributor.address);
+
+      if (address_info.address != primary_address)
+        continue;
+
+      contributions = &contributor.locked_contributions;
+      break;
+    }
+
+    if (!contributions)
+    {
+      result.msg = tr("No contributions recognised by this wallet in service node: ") + sn_key_as_str;
+      return result;
+    }
+
+    if (contributions->empty())
+    {
+      result.msg = tr("Unexpected 0 contributions in service node for this wallet ") + sn_key_as_str;
+      return result;
+    }
+
+    cryptonote::tx_extra_tx_key_image_unlock unlock = {};
+    {
+      uint64_t curr_height = 0;
+      {
+        std::string err_msg;
+        curr_height = get_daemon_blockchain_height(err_msg);
+        if (!err_msg.empty())
+        {
+          result.msg = tr("unable to get network blockchain height from daemon: ") + err_msg;
+          return result;
+        }
+      }
+
+      result.msg.reserve(1024);
+      COMMAND_RPC_GET_SERVICE_NODES::response::contribution const &contribution = (*contributions)[0];
+      if (node_info.requested_unlock_height != 0)
+      {
+        result.msg.append("Key image: ");
+        result.msg.append(contribution.key_image);
+        result.msg.append(" has already been requested to be unlocked, unlocking at height: ");
+        result.msg.append(std::to_string(node_info.requested_unlock_height));
+        result.msg.append(" (about ");
+        result.msg.append(tools::get_human_readable_timespan(std::chrono::seconds((node_info.requested_unlock_height - curr_height) * DIFFICULTY_TARGET_V2)));
+        result.msg.append(")");
+        return result;
+      }
+
+      result.msg.append("You are requesting to unlock a stake of: ");
+      result.msg.append(cryptonote::print_money(contribution.amount));
+      result.msg.append(" Worktips from the service node network.\nThis will schedule the service node: ");
+      result.msg.append(node_info.service_node_pubkey);
+      result.msg.append(" for deactivation.");
+      if (node_info.contributors.size() > 1) {
+          result.msg.append(" The stakes of the service node's ");
+          result.msg.append(std::to_string(node_info.contributors.size() - 1));
+          result.msg.append(" other contributors will unlock at the same time.");
+      }
+      result.msg.append("\n\n");
+
+      uint64_t unlock_height = service_nodes::get_locked_key_image_unlock_height(nettype(), node_info.registration_height, curr_height);
+      result.msg.append("You will continue receiving rewards until the service node expires at the estimated height: ");
+      result.msg.append(std::to_string(unlock_height));
+      result.msg.append(" (about ");
+      result.msg.append(tools::get_human_readable_timespan(std::chrono::seconds((unlock_height - curr_height) * DIFFICULTY_TARGET_V2)));
+      result.msg.append(")");
+
+      cryptonote::blobdata binary_buf;
+      if(!string_tools::parse_hexstr_to_binbuff(contribution.key_image, binary_buf) || binary_buf.size() != sizeof(crypto::key_image))
+      {
+        result.msg = tr("Failed to parse hex representation of key image: ") + contribution.key_image;
+        return result;
+      }
+
+      unlock.key_image = *reinterpret_cast<const crypto::key_image*>(binary_buf.data());
+      if (!generate_signature_for_request_stake_unlock(unlock.key_image, unlock.signature, unlock.nonce))
+      {
+        result.msg = tr("Failed to generate signature to sign request. The key image: ") + contribution.key_image + (" doesn't belong to this wallet");
+        return result;
+      }
+    }
+
+    add_service_node_pubkey_to_tx_extra(result.ptx.tx.extra, sn_key);
+    add_tx_key_image_unlock_to_tx_extra(result.ptx.tx.extra, unlock);
+  }
+
+  result.success = true;
   return result;
 }
 
@@ -7484,14 +7867,6 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
         max_rct_index = std::max(max_rct_index, m_transfers[idx].m_global_output_index);
       }
 
-    // TODO(doyle): Write the error message
-    std::vector<uint64_t> output_blacklist;
-    if (bool get_output_blacklist_failed = !get_output_blacklist(output_blacklist))
-    {
-      THROW_WALLET_EXCEPTION_IF(get_output_blacklist_failed, error::get_output_distribution, "Couldn't retrive list of outputs that are to be exlcuded from selection");
-    }
-
-    std::sort(output_blacklist.begin(), output_blacklist.end());
     const bool has_rct_distribution = has_rct && get_rct_distribution(rct_start_height, rct_offsets);
     if (has_rct_distribution)
     {
@@ -7500,6 +7875,18 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
           error::get_output_distribution, "Not enough rct outputs");
       THROW_WALLET_EXCEPTION_IF(rct_offsets.back() <= max_rct_index,
           error::get_output_distribution, "Daemon reports suspicious number of rct outputs");
+    }
+
+    std::vector<uint64_t> output_blacklist;
+    if (bool get_output_blacklist_failed = !get_output_blacklist(output_blacklist))
+      THROW_WALLET_EXCEPTION_IF(get_output_blacklist_failed, error::get_output_blacklist, "Couldn't retrive list of outputs that are to be exlcuded from selection");
+
+    std::sort(output_blacklist.begin(), output_blacklist.end());
+    if (output_blacklist.size() * 0.05 > (double)rct_offsets.size())
+    {
+      MWARNING("More than 5% of outputs are blacklisted ("
+               << output_blacklist.size() << "/" << rct_offsets.size()
+               << "), please notify the Worktips developers");
     }
 
     // get histogram for the amounts we need
@@ -7632,26 +8019,7 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
       if (n_rct == 0)
         return rct_offsets[block_offset] ? rct_offsets[block_offset] - 1 : 0;
       MDEBUG("Picking 1/" << n_rct << " in " << (last_block_offset - first_block_offset + 1) << " blocks centered around " << block_offset + rct_start_height);
-      
-      uint64_t pick = first_rct + crypto::rand<uint64_t>() % n_rct;
-
-      {
-        double percent_of_outputs_blacklisted = output_blacklist.size() / (double)n_rct;
-        if (static_cast<int>(percent_of_outputs_blacklisted + 1) > 5)
-          MWARNING("More than 5 percent of available outputs are blacklisted, please notify the Worktips developers");
-      }
-
-      for (;;)
-      {
-        if (std::binary_search(output_blacklist.begin(), output_blacklist.end(), pick))
-        {
-          pick = first_rct + crypto::rand<uint64_t>() % n_rct;
-        }
-        else
-        {
-          return pick;
-        }
-      }
+      return first_rct + crypto::rand<uint64_t>() % n_rct;
     };
 
     size_t num_selected_transfers = 0;
@@ -7825,20 +8193,20 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
 
         // while we still need more mixins
         uint64_t num_usable_outs = num_outs;
-        bool allow_blackballed = false;
+        bool allow_blackballed_or_blacklisted = false;
         while (num_found < requested_outputs_count)
         {
           // if we've gone through every possible output, we've gotten all we can
           if (seen_indices.size() == num_usable_outs)
           {
-            // there is a first pass which rejects blackballed outputs, then a second pass
-            // which allows them if we don't have enough non blackballed outputs to reach
-            // the required amount of outputs (since consensus does not care about blackballed
+            // there is a first pass which rejects blackballed/listed outputs, then a second pass
+            // which allows them if we don't have enough non blackballed/list outputs to reach
+            // the required amount of outputs (since consensus does not care about blackballed/listed
             // outputs, we still need to reach the minimum ring size)
-            if (allow_blackballed)
+            if (allow_blackballed_or_blacklisted)
               break;
-            MINFO("Not enough output not marked as spent, we'll allow outputs marked as spent");
-            allow_blackballed = true;
+            MINFO("Not enough output not marked as spent, we'll allow outputs marked as spent and outputs with known destinations and amounts");
+            allow_blackballed_or_blacklisted = true;
             num_usable_outs = num_outs;
           }
 
@@ -7914,10 +8282,14 @@ void wallet2::get_outs(std::vector<std::vector<tools::wallet2::get_outs_entry>> 
 
           if (seen_indices.count(i))
             continue;
-          if (!allow_blackballed && is_output_blackballed(std::make_pair(amount, i))) // don't add blackballed outputs
+          if (!allow_blackballed_or_blacklisted)
           {
-            --num_usable_outs;
-            continue;
+            if (is_output_blackballed(std::make_pair(amount, i)) ||
+                std::binary_search(output_blacklist.begin(), output_blacklist.end(), i))
+            {
+              --num_usable_outs;
+              continue;
+            }
           }
           seen_indices.emplace(i);
 
@@ -8458,14 +8830,11 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
   LOG_PRINT_L2("constructing tx");
   auto sources_copy = sources;
 
-  // TODO(worktips): This should be replaced with a NodeRPCProxy function to get the
-  // current hardfork version. Then use the constructor to get the rules?
-  worktips_construct_tx_params tx_params = {};
-  tx_params.v4_allow_tx_types    = use_fork_rules(network_version_11_infinite_staking, 5);
-  tx_params.v3_per_output_unlock = use_fork_rules(network_version_9_service_nodes, 5);
-  tx_params.v3_is_staking_tx     = is_staking_tx;
-  tx_params.v2_rct               = true;
+  boost::optional<uint8_t> hf_version = get_hard_fork_version();
+  THROW_WALLET_EXCEPTION_IF(!hf_version, error::get_hard_fork_version_error, "Failed to query current hard fork version");
 
+  worktips_construct_tx_params tx_params(*hf_version);
+  tx_params.v3_is_staking_tx = is_staking_tx;
   bool r = cryptonote::construct_tx_and_get_tx_key(m_account.get_keys(), m_subaddresses, sources, splitted_dsts, change_dts, extra, tx, unlock_time, tx_key, additional_tx_keys, rct_config, m_multisig ? &msout : NULL, tx_params);
 
   LOG_PRINT_L2("constructed tx, r="<<r);
@@ -9703,7 +10072,7 @@ skip_tx:
   return ptx_vector;
 }
 
-std::vector<wallet2::pending_tx> wallet2::create_transactions_all(uint64_t below, const cryptonote::account_public_address &address, bool is_subaddress, const size_t outputs, const size_t fake_outs_count, const uint64_t unlock_time, uint32_t priority, const std::vector<uint8_t>& extra, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices, bool is_staking_tx)
+std::vector<wallet2::pending_tx> wallet2::create_transactions_all(uint64_t below, const cryptonote::account_public_address &address, bool is_subaddress, const size_t outputs, const size_t fake_outs_count, const uint64_t unlock_time, uint32_t priority, const std::vector<uint8_t>& extra, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices, bool is_staking_tx, sweep_style_t sweep_style)
 {
   std::vector<size_t> unused_transfers_indices;
   std::vector<size_t> unused_dust_indices;
@@ -9723,6 +10092,9 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_all(uint64_t below
       fund_found = true;
       if (below == 0 || td.amount() < below)
       {
+        if (td.m_tx.version <= transaction::version_1 && sweep_style != sweep_style_t::use_v1_tx)
+          continue;
+
         if ((td.is_rct()) || is_valid_decomposed_amount(td.amount()))
           unused_transfer_dust_indices_per_subaddr[td.m_subaddr_index.minor].first.push_back(i);
         else
@@ -11196,7 +11568,7 @@ uint64_t wallet2::get_daemon_blockchain_target_height(string &err)
 uint64_t wallet2::get_approximate_blockchain_height() const
 {
   const int seconds_per_block         = DIFFICULTY_TARGET_V2;
-  const time_t epochTimeMiningStarted = (m_nettype == TESTNET || m_nettype == STAGENET ?  1536137083 : 1525067730) + (60 * 60 * 24 * 7); // 2018-04-30 ~3:55PM + 1 week to be conservative.
+  const time_t epochTimeMiningStarted = (m_nettype == TESTNET || m_nettype == STAGENET ?  1551950093: 1525067730) + (60 * 60 * 24 * 7); // 2018-04-30 ~3:55PM + 1 week to be conservative.
   const time_t currentTime            = time(NULL);
   uint64_t approx_blockchain_height   = (currentTime < epochTimeMiningStarted) ? 0 : (currentTime - epochTimeMiningStarted)/seconds_per_block;
   LOG_PRINT_L2("Calculated blockchain height: " << approx_blockchain_height);
@@ -12914,6 +13286,44 @@ void wallet2::throw_on_rpc_response_error(const boost::optional<std::string> &st
 
   THROW_WALLET_EXCEPTION_IF(*status == CORE_RPC_STATUS_BUSY, tools::error::daemon_busy, method);
   THROW_WALLET_EXCEPTION_IF(*status != CORE_RPC_STATUS_OK, tools::error::wallet_generic_rpc_error, method, m_trusted_daemon ? *status : "daemon error");
+}
+
+const std::array<const char* const, 5> allowed_priority_strings = {{"default", "unimportant", "normal", "elevated", "priority"}};
+bool parse_subaddress_indices(const std::string& arg, std::set<uint32_t>& subaddr_indices, std::string *err_msg)
+{
+  subaddr_indices.clear();
+
+  if (arg.substr(0, 6) != "index=")
+    return false;
+  std::string subaddr_indices_str_unsplit = arg.substr(6, arg.size() - 6);
+  std::vector<std::string> subaddr_indices_str;
+  boost::split(subaddr_indices_str, subaddr_indices_str_unsplit, boost::is_any_of(","));
+
+  for (const auto& subaddr_index_str : subaddr_indices_str)
+  {
+    uint32_t subaddr_index;
+    if(!epee::string_tools::get_xtype_from_string(subaddr_index, subaddr_index_str))
+    {
+      subaddr_indices.clear();
+      if (err_msg) *err_msg = tr("failed to parse index: ") + subaddr_index_str;
+      return false;
+    }
+    subaddr_indices.insert(subaddr_index);
+  }
+  return true;
+}
+
+bool parse_priority(const std::string& arg, uint32_t& priority)
+{
+  auto priority_pos = std::find(
+    allowed_priority_strings.begin(),
+    allowed_priority_strings.end(),
+    arg);
+  if(priority_pos != allowed_priority_strings.end()) {
+    priority = std::distance(allowed_priority_strings.begin(), priority_pos);
+    return true;
+  }
+  return false;
 }
 
 }
