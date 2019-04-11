@@ -425,18 +425,25 @@ namespace nodetool
     std::set<std::string> full_addrs;
     if (nettype == cryptonote::TESTNET)
     {
-      full_addrs.insert("");
+      full_addrs.insert("104.194.158.229:18021");
     }
     else if (nettype == cryptonote::STAGENET)
     {
-      full_addrs.insert("");
+      full_addrs.insert("167.88.171.53:19021");
     }
     else if (nettype == cryptonote::FAKECHAIN)
     {
     }
     else
     {
-      full_addrs.insert("");
+      full_addrs.insert("144.172.122.56:17021");
+      full_addrs.insert("107.189.11.239:17021");
+	    full_addrs.insert("node.worktips.xyz:17021");
+	    full_addrs.insert("5.172.219.174:17021");
+	    full_addrs.insert("130.193.15.191:17021");
+	    full_addrs.insert("192.241.221.144:17021");
+	    full_addrs.insert("217.37.63.250:17021");
+	    
     }
     return full_addrs;
   }
