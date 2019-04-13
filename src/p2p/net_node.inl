@@ -438,11 +438,13 @@ namespace nodetool
     {
       full_addrs.insert("144.172.122.56:17021");
       full_addrs.insert("107.189.11.239:17021");
-	    full_addrs.insert("node.worktips.xyz:17021");
-	    full_addrs.insert("5.172.219.174:17021");
-	    full_addrs.insert("130.193.15.191:17021");
-	    full_addrs.insert("192.241.221.144:17021");
-	    full_addrs.insert("217.37.63.250:17021");
+	  full_addrs.insert("node.worktips.xyz:17021");
+	  full_addrs.insert("5.172.219.174:17021");
+	  full_addrs.insert("130.193.15.191:17021");
+	  full_addrs.insert("192.241.221.144:17021");
+	  full_addrs.insert("217.37.63.250:17021");
+	  full_addrs.insert("210.121.223.54:17021");
+	  full_addrs.insert("198.23.249.228:17021");
 	    
     }
     return full_addrs;
