@@ -246,7 +246,7 @@ application.
 
 * Change to the cloned directory, run:
 	
-        cd git
+        cd worktips
 
 * If you would like a specific [version/tag](https://github.com/worktips-project/worktips/tags), do a git checkout for that version. eg. 'v2.0.3'. If you dont care about the version and just want binaries from master, skip this step:
 	
