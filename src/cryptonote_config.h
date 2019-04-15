@@ -194,14 +194,14 @@ namespace config
   uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x121bb2;//Wtma
   uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x161bb2;//Wtmi
   uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x1a9bb2;//Wtms
-  uint16_t const P2P_DEFAULT_PORT = 17021;
-  uint16_t const RPC_DEFAULT_PORT = 17022;
-  uint16_t const ZMQ_RPC_DEFAULT_PORT = 17023;
+  uint16_t const P2P_DEFAULT_PORT = 21021;
+  uint16_t const RPC_DEFAULT_PORT = 21022;
+  uint16_t const ZMQ_RPC_DEFAULT_PORT = 21023;		
   boost::uuids::uuid const NETWORK_ID = { {
-        0x2a, 0x46 ,0x61, 0x72, 0x61, 0x75, 0x66, 0x65, 0x79, 0x62 ,0x61, 0x75, 0x74, 0x69, 0x4c
+        0x2a, 0x46 ,0x61, 0x75, 0x61, 0x66, 0x66, 0x65, 0x79, 0x62 ,0x61, 0x75, 0x74, 0x69, 0x44
     } }; // Bender's nightmare
   std::string const GENESIS_TX = "011e01ff0001dcbda1dfbf02029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101133303ea420f2ee1a883eab2f069e6c41424c60cbf47e14c8509e00ab785740e";
-  uint32_t const GENESIS_NONCE = 1022201;
+  uint32_t const GENESIS_NONCE = 10221;
 
   uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = ((60 * 60 * 24 * 7) / DIFFICULTY_TARGET_V2);
   std::string const GOVERNANCE_WALLET_ADDRESS[] =
