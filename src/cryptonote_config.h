@@ -194,12 +194,12 @@ namespace config
   uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x121bb2;//Wtma
   uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x161bb2;//Wtmi
   uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x1a9bb2;//Wtms
-  uint16_t const P2P_DEFAULT_PORT = 21021;
-  uint16_t const RPC_DEFAULT_PORT = 21022;
-  uint16_t const ZMQ_RPC_DEFAULT_PORT = 21023;		
+  uint16_t const P2P_DEFAULT_PORT = 31021;
+  uint16_t const RPC_DEFAULT_PORT = 31022;
+  uint16_t const ZMQ_RPC_DEFAULT_PORT = 31023;		
   boost::uuids::uuid const NETWORK_ID = { {
-        0x2a, 0x46 ,0x61, 0x75, 0x61, 0x66, 0x66, 0x65, 0x79, 0x62 ,0x61, 0x75, 0x74, 0x69, 0x44
-    } }; // Bender's nightmare
+        0xe1, 0x69 ,0x61, 0x75, 0x61, 0x66, 0x66, 0x65, 0x79, 0x62 ,0x61, 0x75, 0x74, 0x69, 0x44
+    } };
   std::string const GENESIS_TX = "011e01ff0001dcbda1dfbf02029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101133303ea420f2ee1a883eab2f069e6c41424c60cbf47e14c8509e00ab785740e";
   uint32_t const GENESIS_NONCE = 10221;
 
@@ -214,12 +214,12 @@ namespace config
     uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x1ddd32;//Wtta
     uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x221d32;//Wtti
     uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x269d32;//Wtts
-    uint16_t const P2P_DEFAULT_PORT = 18021;
-    uint16_t const RPC_DEFAULT_PORT = 18022;
-    uint16_t const ZMQ_RPC_DEFAULT_PORT = 18023;
+    uint16_t const P2P_DEFAULT_PORT = 33021;
+    uint16_t const RPC_DEFAULT_PORT = 33022;
+    uint16_t const ZMQ_RPC_DEFAULT_PORT = 33023;
     boost::uuids::uuid const NETWORK_ID = { {
-        0xe1, 0x5f, 0x3a, 0x78, 0x65, 0xdc, 0x17, 0x61, 0x64, 0x15, 0xbe, 0x6f, 0xca, 0xb8, 0x02, 0xa1,
-      } }; // Bender's daydream
+        0xe1, 0x69, 0x3a, 0x78, 0x65, 0xdc, 0x17, 0x61, 0x64, 0x15, 0xbe, 0x6f, 0xca, 0xb8, 0x02, 0xa1,
+      } };
     std::string const GENESIS_TX = "011e01ff0001dcbda1dfbf02029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd088071210130a4be58ee8e15f0e4223816f65703c10266e5d00c7a3f11c720b10c8e3f323b";
     uint32_t const GENESIS_NONCE = 10001;
 
@@ -236,12 +236,12 @@ namespace config
     uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0xdd32;//Wtsa
     uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x4dd32;//Wtsi
     uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x95d32;//Wtss
-    uint16_t const P2P_DEFAULT_PORT = 19021;
-    uint16_t const RPC_DEFAULT_PORT = 19022;
-    uint16_t const ZMQ_RPC_DEFAULT_PORT = 19023;
+    uint16_t const P2P_DEFAULT_PORT = 32021;
+    uint16_t const RPC_DEFAULT_PORT = 32022;
+    uint16_t const ZMQ_RPC_DEFAULT_PORT = 32023;
     boost::uuids::uuid const NETWORK_ID = { {
-        0x69, 0xbb ,0x37, 0x9B, 0x22, 0xB2, 0x97, 0x8A, 0xCC, 0xA1, 0xDF, 0x9C, 0x0A, 0x66 ,0x1E, 0x09
-      } }; // Beep Boop
+        0xe1, 0x69 ,0x37, 0x9B, 0x22, 0xB2, 0x97, 0x8A, 0xCC, 0xA1, 0xDF, 0x9C, 0x0A, 0x66 ,0x1E, 0x09
+      } };
     std::string const GENESIS_TX = "011e01ff0001dcbda1dfbf02029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101c0d1247d78ce4a47c5680273014440262bcea4d6d5ae4f8eaa2211d248b4064a";
     uint32_t const GENESIS_NONCE = 10002;
 
