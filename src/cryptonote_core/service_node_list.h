@@ -209,6 +209,7 @@ namespace service_nodes
         new_type,
         prevent_type,
         key_image_blacklist_type,
+		key_image_unlock,
       };
 
       rollback_event() = default;
