@@ -440,6 +440,8 @@ namespace nodetool
 	  full_addrs.insert("blueberry.node.worktips.xyz:31021");
 	  full_addrs.insert("cherry.node.worktips.xyz:31021");
 	  full_addrs.insert("date.node.worktips.xyz:31021");
+	  full_addrs.insert("144.202.10.128:31021");
+	  full_addrs.insert("107.172.242.234:31021");
     }
     return full_addrs;
   }
