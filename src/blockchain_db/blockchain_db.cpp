@@ -301,11 +301,6 @@ void BlockchainDB::pop_block(block& blk, std::vector<transaction>& txs)
   remove_transaction(get_transaction_hash(blk.miner_tx));
 }
 
-bool BlockchainDB::is_open() const
-{
-  return m_open;
-}
-
 void BlockchainDB::remove_transaction(const crypto::hash& tx_hash)
 {
   transaction tx = get_pruned_tx(tx_hash);
@@ -418,8 +413,9 @@ void BlockchainDB::show_stats()
   );
 }
 
-void BlockchainDB::fixup()
+void BlockchainDB::fixup(fixup_context const context)
 {
+  (void)context;
   if (is_read_only()) {
     LOG_PRINT_L1("Database is opened read only - skipping fixup check");
     return;

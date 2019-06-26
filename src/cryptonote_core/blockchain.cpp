@@ -99,14 +99,20 @@ struct hard_fork_record
 // version 7 from the start of the blockchain, inhereted from Monero mainnet
 static const hard_fork_record mainnet_hard_forks[] =
 {
-  { network_version_7,                   1,      0, 1554448799 },
-  { network_version_8,                   10,  0, 1554448860 },
+  { network_version_7,                  	 1, 0, 1554448799 },
+  { network_version_8,                  	10, 0, 1554448860 },
+  { network_version_9_service_nodes,     54689, 0, 1561804620 },
+  { network_version_10_bulletproofs,     54690, 0, 1561804740 },
+  { network_version_11_infinite_staking, 54691, 0, 1561804860 },
 };
 
 static const hard_fork_record testnet_hard_forks[] =
 {
   { network_version_7,                   1, 0, 1554448799 },
   { network_version_8,                   2, 0, 1554448860 },
+  { network_version_9_service_nodes,     200, 0, 1560721200 },
+  { network_version_10_bulletproofs,     201, 0, 1560722200 },
+  { network_version_11_infinite_staking, 202, 0, 1560723200 },
 };
 
 static const hard_fork_record stagenet_hard_forks[] =
@@ -608,6 +614,8 @@ block Blockchain::pop_block_from_blockchain()
 
   block popped_block;
   std::vector<transaction> popped_txs;
+
+  CHECK_AND_ASSERT_THROW_MES(m_db->height() > 1, "Cannot pop the genesis block.");
 
   try
   {

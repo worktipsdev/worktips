@@ -673,9 +673,12 @@ else()
     add_cxx_flag_if_supported(-fstack-clash-protection CXX_SECURITY_FLAGS)
   endif()
 
-  add_c_flag_if_supported(-mmitigate-rop C_SECURITY_FLAGS)
-  add_cxx_flag_if_supported(-mmitigate-rop CXX_SECURITY_FLAGS)
-
+  # Removed in GCC 9.1 (or before ?), but still accepted, so spams the output
+  if (NOT (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_C_COMPILER_VERSION VERSION_LESS 9.1))
+    add_c_flag_if_supported(-mmitigate-rop C_SECURITY_FLAGS)
+    add_cxx_flag_if_supported(-mmitigate-rop CXX_SECURITY_FLAGS)
+  endif()
+  
   # linker
   if (NOT WIN32)
     # Windows binaries die on startup with PIE
@@ -880,6 +883,7 @@ set(OLD_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 if(STATIC)
   if(MINGW)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+	set(Boost_NO_BOOST_CMAKE ON)
   endif()
 
   set(Boost_USE_STATIC_LIBS ON)
@@ -889,11 +893,17 @@ find_package(Boost 1.58 QUIET REQUIRED COMPONENTS system filesystem thread date_
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ${OLD_LIB_SUFFIXES})
 if(NOT Boost_FOUND)
-  die("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev (1.58) or the equivalent")
+  die("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev (>=1.58) or the equivalent")
 elseif(Boost_FOUND)
   message(STATUS "Found Boost Version: ${Boost_VERSION}")
-  if (Boost_VERSION VERSION_LESS 106200 AND NOT (OPENSSL_VERSION VERSION_LESS 1.1))
-      message(FATAL_ERROR "Boost older than 1.62 is too old to link with OpenSSL 1.1 or newer. "
+  if (Boost_VERSION VERSION_LESS 10 AND Boost_VERSION VERSION_LESS 1.62.0 AND NOT (OPENSSL_VERSION VERSION_LESS 1.1))
+    set(BOOST_BEFORE_1_62 true)
+  endif()
+  if (NOT Boost_VERSION VERSION_LESS 10 AND Boost_VERSION VERSION_LESS 106200 AND NOT (OPENSSL_VERSION VERSION_LESS 1.1))
+    set(BOOST_BEFORE_1_62 true)
+  endif()
+  if (BOOST_BEFORE_1_62)
+	message(FATAL_ERROR "Boost older than 1.62 is too old to link with OpenSSL 1.1 or newer. "
                           "Update Boost or install OpenSSL 1.0 and set path to it when running cmake: "
                           "cmake -DOPENSSL_ROOT_DIR='/usr/include/openssl-1.0;/usr/lib/openssl-1.0'")
   endif()
