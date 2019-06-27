@@ -108,12 +108,12 @@ namespace cryptonote {
       base_reward = 0;
     }
 
-    if (version <= 8)
+    if (version == 8)	{
       base_reward = 28000000000.0 + 100000000000.0 / worktips::exp2(height / (720.0 * 90.0)); // halve every 90 days.
-
-    if (version >= 9)
+	}
+    if (version >= 9)	{
       base_reward = 28000000000.0 + 200000000000.0 / worktips::exp2(height / (720.0 * 90.0)); // halve every 90 days.
-
+	}
     uint64_t full_reward_zone = get_min_block_weight(version);
 
     //make it soft
