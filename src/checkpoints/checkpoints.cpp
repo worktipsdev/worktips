@@ -174,10 +174,6 @@ namespace cryptonote
         break;
       case MAINNET:
 #if !defined(WORKTIPS_ENABLE_INTEGRATION_TEST_HOOKS)
-		ADD_CHECKPOINT(0,     "0d90f1bc89c4f408959741db903ea7086e2cf05db65300e4e545831bdeba788b");
-		ADD_CHECKPOINT(1,     "9b9ea85957ce9927fa3b4a2cc16849f3278deb8cd2a3e847121fc87dd792076b");
-		ADD_CHECKPOINT(10,     "7dbddde6692044de592eea5212784964afdcda6e877656623b43eec0a3fc2f2c");
-		ADD_CHECKPOINT(25,     "bca9c76887d8364e700fce222bdde00099cf6550b8c7cfe4258b6b44b4d2f8b8");
 		#endif
         break;
     }

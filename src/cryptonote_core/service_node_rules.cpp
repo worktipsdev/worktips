@@ -14,15 +14,15 @@ uint64_t get_staking_requirement(cryptonote::network_type m_nettype, uint64_t he
   if (m_nettype == cryptonote::TESTNET || m_nettype == cryptonote::FAKECHAIN)
       return COIN * 100;
 
-  uint64_t hardfork_height = m_nettype == cryptonote::MAINNET ? 100 : 96210 /* stagenet */;
+  uint64_t hardfork_height = m_nettype == cryptonote::MAINNET ? 100 : 100 /* stagenet */;
   if (height < hardfork_height) height = hardfork_height;
 
   uint64_t height_adjusted = height - hardfork_height;
   uint64_t base = 0, variable = 0;
-  if (height > 250)
+  if (height > 100 && hf_version >= cryptonote::network_version_11_infinite_staking )
 	  {
     base     = 200000 * COIN;
-    variable = (250007.0 * COIN) / worktips::exp2(height_adjusted/16200.0);
+    variable = (250007.0 * COIN) / worktips::exp2(height_adjusted/6480000.0);
 	  }
 	else {
 
